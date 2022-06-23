@@ -2,47 +2,361 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Add React in One Minute</title>
+    <title>Unit 203 | Michael Xavier</title>
+    <link rel="icon" href="data:;base64,=" />
   </head>
   <body>
     <div id="app"></div>
-
-    <script
-      src="https://unpkg.com/react@18/umd/react.development.js"
-      crossorigin
-    ></script>
-    <script
-      src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
-      crossorigin
-    ></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.3/dayjs.min.js"></script>
+
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 14px;
+        padding: 0 20px;
+      }
+
+      select,
+      input {
+        cursor: pointer;
+      }
+
+      .franchisor,
+      .filters,
+      .results-overview,
+      .results-table {
+        margin-bottom: 20px;
+      }
+
+      .filters {
+        display: inline-flex;
+      }
+
+      .filter {
+        display: flex;
+        align-items: center;
+        margin-right: 20px;
+      }
+
+      .filter .filter__name {
+        font-weight: 600;
+        margin-right: 6px;
+      }
+
+      .filter .filter__is-checked {
+        margin-right: 6px;
+        cursor: pointer;
+      }
+
+      .results-table tbody {
+        overflow-y: scroll;
+      }
+
+      .results-table table {
+        font-family: arial, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 30px;
+      }
+
+      .results-table td,
+      .results-table th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+        width: fit-content;
+      }
+
+      .results-table tr:nth-child(even) {
+        background-color: #dddddd;
+      }
+
+      .color-green {
+        color: #28a745;
+      }
+
+      .color-red {
+        color: #dc3545;
+      }
+    </style>
 
     <script type="text/babel">
       "use strict";
 
+      const BASE_URL = "http://localhost:3000";
+
+      const formatter = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      });
+
+      const formatCurrency = (val) => formatter.format(val);
+
+      const e = React.createElement;
+
+      function Franchisor(props) {
+        return (
+          <div className="franchisor">
+            <h3>Franchisor: {props.name}</h3>
+            <strong>Franchisees</strong>: {props.numFranchisees}{" "}
+            <strong>Locations</strong>: {props.numLocations}{" "}
+            <strong>Fee</strong>: {props.fee}%
+          </div>
+        );
+      }
+
+      function Filters(props) {
+        const {
+          franchisees,
+          locations,
+          selectedFranchisee,
+          selectedLocation,
+          selectedDate,
+          setSelectedFranchisee,
+          setSelectedLocation,
+          setSelectedDate,
+          onSelectFranchisee,
+          onSelectLocation,
+          onSelectDate,
+        } = props;
+        return (
+          <div className="filters">
+            <div className="filter">
+              {selectedFranchisee && (
+                <span
+                  className="filter__is-checked"
+                  onClick={() => setSelectedFranchisee()}
+                >
+                  &#9989;
+                </span>
+              )}
+              <div className="filter__name">&#128100;</div>
+              <select onChange={onSelectFranchisee}>
+                <option key="empty"></option>
+                {franchisees.map((franchisee) => (
+                  <option key={franchisee.id} value={franchisee.id}>
+                    {franchisee.firstName} {franchisee.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="filter">
+              {selectedLocation && (
+                <span
+                  className="filter__is-checked"
+                  onClick={() => setSelectedLocation()}
+                >
+                  &#9989;
+                </span>
+              )}
+              <div className="filter__name">&#127758;</div>
+              <select onChange={onSelectLocation}>
+                <option key="empty"></option>
+                {locations.map((location) => (
+                  <option key={location.id} value={location.id}>
+                    {location.address}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="filter">
+              {selectedDate && (
+                <span
+                  className="filter__is-checked"
+                  onClick={() => setSelectedDate()}
+                >
+                  &#9989;
+                </span>
+              )}
+              <div className="filter__name">&#128197;</div>
+              <input type="date" name="date" onChange={onSelectDate} />
+            </div>
+          </div>
+        );
+      }
+
+      function ResultsOverview(props) {
+        const { subtotal, total, fees, numResults } = props;
+        return (
+          <div className="results-overview">
+            <div>
+              <strong>Subtotal</strong>: {subtotal}
+            </div>
+            <div>
+              <strong>Total</strong>: {total}
+            </div>
+            <div>
+              <strong>Franchisor Fees</strong>:{" "}
+              <span
+                className={
+                  Number(fees.replace(/[^0-9\.]+/g, "")) > 0
+                    ? "color-green"
+                    : "color-red"
+                }
+              >
+                <strong>{fees}</strong>
+              </span>
+            </div>
+            <div>
+              <strong>Sales Records</strong>:{" "}
+              <span className={numResults > 0 ? "color-green" : "color-red"}>
+                <strong>{numResults}</strong>
+              </span>
+            </div>
+          </div>
+        );
+      }
+
+      function ResultsTable(props) {
+        const { sales, getFranchiseFee } = props;
+        return (
+          <div className="results-table">
+            {sales.length ? (
+              <table>
+                <thead>
+                  <tr>
+                    {Object.keys(sales[0]).map((i, idx) => (
+                      <th key={idx}>{i.toUpperCase()}</th>
+                    ))}
+                    <th key="fee">FEE</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sales.map((sale) => (
+                    <tr key={sale.id}>
+                      <td>{sale.id}</td>
+                      <td>{sale.franchiseeId}</td>
+                      <td>{sale.locationId}</td>
+                      <td>{sale.date}</td>
+                      <td>${sale.subtotal}</td>
+                      <td>${sale.tax}</td>
+                      <td>${sale.total}</td>
+                      <td>${getFranchiseFee(sale.subtotal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div>No Results Found.</div>
+            )}
+          </div>
+        );
+      }
+
       function App() {
-        const [numFranchisees, setNumFranchisees] = React.useState(4);
+        const [franchisees, setFranchisees] = React.useState([]);
+        const [locations, setLocations] = React.useState([]);
+        const [sales, setSales] = React.useState([]);
+        const [selectedFranchisee, setSelectedFranchisee] = React.useState();
+        const [selectedLocation, setSelectedLocation] = React.useState();
+        const [selectedDate, setSelectedDate] = React.useState();
+
+        const getInitialData = async () => {
+          try {
+            const [franchiseeData, locationData] = await Promise.all([
+              axios.get(`${BASE_URL}/franchisees`),
+              axios.get(`${BASE_URL}/locations`),
+            ]);
+            setFranchisees(franchiseeData.data);
+            setLocations(locationData.data);
+          } catch (e) {
+            console.error("failed to retrieve franchisee and location data");
+          }
+        };
+
+        React.useEffect(() => getInitialData);
+
+        React.useEffect(() => {
+          onQueryForSales([]);
+        }, [selectedFranchisee, selectedLocation, selectedDate]);
+
+        const onQueryForSales = async () => {
+          if (!selectedFranchisee && !selectedLocation && !selectedDate) {
+            setSales([]);
+            return;
+          }
+
+          try {
+            let url = `${BASE_URL}/sales?`;
+
+            if (selectedFranchisee) {
+              url += `franchisee=${selectedFranchisee.id}`;
+            }
+
+            if (selectedLocation) {
+              url += `&location=${selectedLocation.id}`;
+            }
+
+            if (selectedDate) {
+              url += `&date=${selectedDate}`;
+            }
+
+            const salesData = (await axios.get(url)).data;
+            setSales(salesData);
+          } catch (e) {
+            console.log("failed to retrieve sales data", e);
+          }
+        };
+
+        const getFranchiseFee = (subtotal) => (0.1 * subtotal).toFixed(2);
+
+        const getSumOfSales = (type) =>
+          !sales
+            ? 0
+            : sales
+                .map((sale) => sale[type])
+                .reduce((a, b) => a + b, 0)
+                .toFixed(2);
+
+        const onSelectFranchisee = (e) => {
+          const franchiseeId = e.target.value;
+          const franchisee = franchisees.find((f) => f.id === franchiseeId);
+          setSelectedFranchisee(franchisee);
+        };
+
+        const onSelectLocation = (e) => {
+          const locationId = e.target.value;
+          const location = locations.find((f) => f.id === locationId);
+          setSelectedLocation(location);
+        };
+
+        const onSelectDate = (e) => {
+          const newDate = e.target.value;
+          setSelectedDate(newDate);
+        };
 
         return (
-          <div>
-            <h1>Unit 203</h1>
-
-            <div>
-              <div>
-                <h3>Franchisor: Unit 203</h3>
-                <div>Franchise Fee: 10%</div>
-                <div>Managing x Franchisees and x Locations</div>
-              </div>
-
-              <div>
-                Search Franchisee
-                <br />
-                Search Location
-                <br />
-                Get daily sales by location
-                <br />
-              </div>
-            </div>
+          <div className="app">
+            <Franchisor
+              name="Unit 203"
+              numFranchisees={franchisees.length}
+              numLocations={locations.length}
+              fee="10"
+            />
+            <Filters
+              franchisees={franchisees}
+              locations={locations}
+              selectedFranchisee={selectedFranchisee}
+              selectedLocation={selectedLocation}
+              selectedDate={selectedDate}
+              setSelectedFranchisee={setSelectedFranchisee}
+              setSelectedLocation={setSelectedLocation}
+              setSelectedDate={setSelectedDate}
+              onSelectFranchisee={onSelectFranchisee}
+              onSelectLocation={onSelectLocation}
+              onSelectDate={onSelectDate}
+            />
+            <ResultsOverview
+              subtotal={formatCurrency(getSumOfSales("subtotal"))}
+              total={formatCurrency(getSumOfSales("total"))}
+              fees={formatCurrency(getFranchiseFee(getSumOfSales("subtotal")))}
+              numResults={sales ? sales.length : 0}
+            />
+            <ResultsTable sales={sales} getFranchiseFee={getFranchiseFee} />
           </div>
         );
       }

@@ -9,6 +9,8 @@
   "author": "lookininward",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.18.1"
+    "dayjs": "^1.11.3",
+    "express": "^4.18.1",
+    "node-json-db": "^1.5.0"
   }
 }
