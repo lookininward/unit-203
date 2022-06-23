@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Add React in One Minute</title>
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <script
+      src="https://unpkg.com/react@18/umd/react.development.js"
+      crossorigin
+    ></script>
+    <script
+      src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+      crossorigin
+    ></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <script type="text/babel">
+      "use strict";
+
+      function App() {
+        const [numFranchisees, setNumFranchisees] = React.useState(4);
+
+        return (
+          <div>
+            <h1>Unit 203</h1>
+
+            <div>
+              <div>
+                <h3>Franchisor: Unit 203</h3>
+                <div>Franchise Fee: 10%</div>
+                <div>Managing x Franchisees and x Locations</div>
+              </div>
+
+              <div>
+                Search Franchisee
+                <br />
+                Search Location
+                <br />
+                Get daily sales by location
+                <br />
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      const domContainer = document.querySelector("#app");
+      const root = ReactDOM.createRoot(domContainer);
+      root.render(e(App));
+    </script>
+  </body>
+</html>
