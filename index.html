@@ -52,35 +52,77 @@
         cursor: pointer;
       }
 
-      .results-table tbody {
-        overflow-y: scroll;
+      .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .pagination .pagination__set {
+        display: inline-flex;
+      }
+
+      .page {
+        border: 1px solid #000;
+        padding: 5px;
+        margin-right: 5px;
+        cursor: pointer;
+      }
+
+      .page.page--active {
+        background-color: #000;
+        color: #fff;
+      }
+
+      .loading {
+        margin: 30px 0;
       }
 
       .results-table table {
         font-family: arial, sans-serif;
+        table-layout: fixed;
         border-collapse: collapse;
         width: 100%;
         margin-top: 30px;
       }
 
+      .results-table tbody {
+        display: block;
+        max-height: 80vh;
+        overflow-y: scroll;
+        overflow-x: hidden;
+      }
+
+      .results-table thead,
+      .results-table tbody tr {
+        display: table;
+        table-layout: fixed;
+        width: 100%;
+      }
+
       .results-table td,
       .results-table th {
-        border: 1px solid #dddddd;
+        border: 1px solid #ddd;
         text-align: left;
         padding: 8px;
-        width: fit-content;
       }
 
       .results-table tr:nth-child(even) {
-        background-color: #dddddd;
+        background-color: #ddd;
       }
 
-      .color-green {
-        color: #28a745;
+      .linkedin {
+        display: flex;
+        justify-content: flex-end;
       }
 
-      .color-red {
-        color: #dc3545;
+      .linkedin img {
+        position: absolute;
+        right: 30px;
+        bottom: 30px;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
       }
     </style>
 
@@ -88,13 +130,6 @@
       "use strict";
 
       const BASE_URL = "http://localhost:3000";
-
-      const formatter = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      });
-
-      const formatCurrency = (val) => formatter.format(val);
 
       const e = React.createElement;
 
@@ -135,8 +170,11 @@
                 </span>
               )}
               <div className="filter__name">&#128100;</div>
-              <select onChange={onSelectFranchisee}>
-                <option key="empty"></option>
+              <select
+                onChange={onSelectFranchisee}
+                value={selectedFranchisee ? selectedFranchisee.id : 0}
+              >
+                <option key="empty">All</option>
                 {franchisees.map((franchisee) => (
                   <option key={franchisee.id} value={franchisee.id}>
                     {franchisee.firstName} {franchisee.lastName}
@@ -154,8 +192,11 @@
                 </span>
               )}
               <div className="filter__name">&#127758;</div>
-              <select onChange={onSelectLocation}>
-                <option key="empty"></option>
+              <select
+                onChange={onSelectLocation}
+                value={selectedLocation ? selectedLocation.id : 0}
+              >
+                <option key="empty">All</option>
                 {locations.map((location) => (
                   <option key={location.id} value={location.id}>
                     {location.address}
@@ -173,69 +214,110 @@
                 </span>
               )}
               <div className="filter__name">&#128197;</div>
-              <input type="date" name="date" onChange={onSelectDate} />
+              <input
+                type="date"
+                name="date"
+                onChange={onSelectDate}
+                value={
+                  selectedDate ? selectedDate : dayjs().format("YYYY-MM-DD")
+                }
+              />
             </div>
           </div>
         );
       }
 
       function ResultsOverview(props) {
-        const { subtotal, total, fees, numResults } = props;
         return (
           <div className="results-overview">
             <div>
-              <strong>Subtotal</strong>: {subtotal}
+              <strong>Subtotal</strong>: {props.subtotal}
             </div>
             <div>
-              <strong>Total</strong>: {total}
+              <strong>Total</strong>: {props.total}
             </div>
             <div>
-              <strong>Franchisor Fees</strong>:{" "}
-              <span
-                className={
-                  Number(fees.replace(/[^0-9\.]+/g, "")) > 0
-                    ? "color-green"
-                    : "color-red"
-                }
-              >
-                <strong>{fees}</strong>
-              </span>
+              <strong>Franchisor Fees</strong>: {props.fees}
             </div>
             <div>
-              <strong>Sales Records</strong>:{" "}
-              <span className={numResults > 0 ? "color-green" : "color-red"}>
-                <strong>{numResults}</strong>
-              </span>
+              <strong>Sales Records</strong>: {props.numResults}
+            </div>
+          </div>
+        );
+      }
+
+      function Pagination(props) {
+        const { pagination, onQueryForSales } = props;
+        return (
+          <div className="pagination">
+            <div className="pagination__set">
+              {pagination &&
+                pagination.pages.map((page) => (
+                  <div
+                    className={
+                      pagination.currPage === page.number
+                        ? "page page--active"
+                        : "page"
+                    }
+                    key={page.number}
+                    onClick={() => onQueryForSales(page.url)}
+                  >
+                    {page.number}
+                  </div>
+                ))}
+            </div>
+
+            <div className="pagination__set">
+              {pagination && pagination.prevPage && pagination.currPage != 1 && (
+                <div
+                  className="page"
+                  key={pagination.prevPage.number}
+                  onClick={() => onQueryForSales(pagination.prevPage)}
+                >
+                  &#10094;
+                </div>
+              )}
+
+              {pagination &&
+                pagination.nextPage &&
+                pagination.pages[pagination.pages.length - 1].number !=
+                  pagination.currPage && (
+                  <div
+                    className="page"
+                    key={pagination.nextPage.number}
+                    onClick={() => onQueryForSales(pagination.nextPage)}
+                  >
+                    &#10095;
+                  </div>
+                )}
             </div>
           </div>
         );
       }
 
       function ResultsTable(props) {
-        const { sales, getFranchiseFee } = props;
         return (
           <div className="results-table">
-            {sales.length ? (
+            {props.sales.length ? (
               <table>
                 <thead>
                   <tr>
-                    {Object.keys(sales[0]).map((i, idx) => (
+                    {Object.keys(props.sales[0]).map((i, idx) => (
                       <th key={idx}>{i.toUpperCase()}</th>
                     ))}
-                    <th key="fee">FEE</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sales.map((sale) => (
+                  {props.sales.map((sale) => (
                     <tr key={sale.id}>
                       <td>{sale.id}</td>
                       <td>{sale.franchiseeId}</td>
                       <td>{sale.locationId}</td>
                       <td>{sale.date}</td>
-                      <td>${sale.subtotal}</td>
-                      <td>${sale.tax}</td>
-                      <td>${sale.total}</td>
-                      <td>${getFranchiseFee(sale.subtotal)}</td>
+                      <td>{sale.subtotal.currency}</td>
+                      <td>{sale.tax.currency}</td>
+                      <td>{sale.total.currency}</td>
+                      <td>{sale.fee.currency}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -248,12 +330,15 @@
       }
 
       function App() {
-        const [franchisees, setFranchisees] = React.useState([]);
-        const [locations, setLocations] = React.useState([]);
-        const [sales, setSales] = React.useState([]);
-        const [selectedFranchisee, setSelectedFranchisee] = React.useState();
-        const [selectedLocation, setSelectedLocation] = React.useState();
-        const [selectedDate, setSelectedDate] = React.useState();
+        const { useState, useEffect } = React;
+        const [isLoading, setIsLoading] = useState(false);
+        const [franchisees, setFranchisees] = useState([]);
+        const [locations, setLocations] = useState([]);
+        const [sales, setSales] = useState({ records: [] });
+        const [selectedFranchisee, setSelectedFranchisee] = useState();
+        const [selectedLocation, setSelectedLocation] = useState();
+        const [selectedDate, setSelectedDate] = useState();
+        const [pagination, setPagination] = useState();
 
         const getInitialData = async () => {
           try {
@@ -268,49 +353,65 @@
           }
         };
 
-        React.useEffect(() => getInitialData);
+        useEffect(() => {
+          getInitialData();
+        }, []);
 
-        React.useEffect(() => {
-          onQueryForSales([]);
+        useEffect(() => {
+          onQueryForSales();
         }, [selectedFranchisee, selectedLocation, selectedDate]);
 
-        const onQueryForSales = async () => {
-          if (!selectedFranchisee && !selectedLocation && !selectedDate) {
-            setSales([]);
-            return;
-          }
+        const onQueryForSales = async (pageURL) => {
+          setIsLoading(true);
 
           try {
-            let url = `${BASE_URL}/sales?`;
+            const url = (() => {
+              if (pageURL) {
+                return `${BASE_URL}${pageURL}`;
+              }
 
-            if (selectedFranchisee) {
-              url += `franchisee=${selectedFranchisee.id}`;
-            }
+              let url = `${BASE_URL}/sales?`;
 
-            if (selectedLocation) {
-              url += `&location=${selectedLocation.id}`;
-            }
+              if (selectedFranchisee) {
+                url += `franchisee=${selectedFranchisee.id}`;
+              }
 
-            if (selectedDate) {
-              url += `&date=${selectedDate}`;
-            }
+              if (selectedLocation) {
+                url += `&location=${selectedLocation.id}`;
+              }
+
+              if (selectedDate) {
+                url += `&date=${selectedDate}`;
+              }
+
+              return url;
+            })();
 
             const salesData = (await axios.get(url)).data;
-            setSales(salesData);
+
+            setSales({
+              records: salesData.records,
+              subtotal: salesData.subtotal,
+              total: salesData.total,
+              fees: salesData.fees,
+              numTotalResults: salesData.numTotalResults,
+            });
+
+            if (salesData.pages) {
+              setPagination({
+                currPage: salesData.currPage,
+                pages: salesData.pages,
+                prevPage: salesData.prevPage,
+                nextPage: salesData.nextPage,
+                numTotalResults: salesData.numTotalResults,
+              });
+            }
           } catch (e) {
             console.log("failed to retrieve sales data", e);
+          } finally {
+            setIsLoading(false);
           }
         };
-
-        const getFranchiseFee = (subtotal) => (0.1 * subtotal).toFixed(2);
-
-        const getSumOfSales = (type) =>
-          !sales
-            ? 0
-            : sales
-                .map((sale) => sale[type])
-                .reduce((a, b) => a + b, 0)
-                .toFixed(2);
 
         const onSelectFranchisee = (e) => {
           const franchiseeId = e.target.value;
@@ -351,12 +452,35 @@
               onSelectDate={onSelectDate}
             />
             <ResultsOverview
-              subtotal={formatCurrency(getSumOfSales("subtotal"))}
-              total={formatCurrency(getSumOfSales("total"))}
-              fees={formatCurrency(getFranchiseFee(getSumOfSales("subtotal")))}
-              numResults={sales ? sales.length : 0}
+              subtotal={sales.subtotal}
+              total={sales.total}
+              fees={sales.fees}
+              numResults={sales.numTotalResults}
             />
-            <ResultsTable sales={sales} getFranchiseFee={getFranchiseFee} />
+
+            {!!(pagination && pagination.pages && pagination.pages.length) && (
+              <Pagination
+                pagination={pagination}
+                onQueryForSales={onQueryForSales}
+              />
+            )}
+
+            {isLoading ? (
+              <div className="loading">Loading...</div>
+            ) : (
+              <ResultsTable sales={sales.records} />
+            )}
+
+            <a
+              href="https://www.linkedin.com/in/vinothmichaelxavier/"
+              target="_blank"
+              className="linkedin"
+            >
+              <img
+                src="https://cdn-icons-png.flaticon.com/512/174/174857.png"
+                alt="Link to author's LinkedIn profile"
+              />
+            </a>
           </div>
         );
       }
